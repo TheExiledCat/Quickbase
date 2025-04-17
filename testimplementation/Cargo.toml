@@ -1,0 +1,7 @@
+[package]
+name = "testimplementation"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+qbase ={path="../lib"}

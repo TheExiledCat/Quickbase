@@ -1,0 +1,1 @@
+/home/amano/quickbaseRust/lib/target/debug/liblibqbase.rlib: /home/amano/quickbaseRust/lib/src/context.rs /home/amano/quickbaseRust/lib/src/lib.rs /home/amano/quickbaseRust/lib/src/model.rs /home/amano/quickbaseRust/lib/src/schema.rs
