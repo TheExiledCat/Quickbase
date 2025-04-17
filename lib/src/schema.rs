@@ -1,13 +1,18 @@
+use std::{collections::HashMap, fs::File, io::Write};
+
 use crate::version::QBASEVERSION;
-use chrono::{DateTime, Datelike, Utc};
+use ::serde::{Deserialize, Serialize};
+use chrono::{DateTime, Utc, serde};
 use semver::Version;
-#[derive(Debug)]
+use serde_json;
+// use semver::Version;
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Schema {
     version: Version,
     entities: Vec<Entity>,
     settings: SchemaSettings,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum EntityType {
     AUTH,
     DATA,
@@ -45,17 +50,32 @@ impl EntityType {
                 max_date: DateTime::<Utc>::MAX_UTC,
             },
         ));
+        match self {
+            EntityType::AUTH => {}
+            EntityType::DATA => {}
+            EntityType::COMPUTED => {}
+        }
         return fields;
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Entity {
     name: String,
     kind: EntityType,
     fields: Vec<EntityField>,
+    dtos: Vec<DTO>,
 }
-
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+pub enum DTOField {
+    STATIC,
+    VALUE(String),
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DTO {
+    name: String,
+    data: HashMap<String, DTOField>,
+}
+#[derive(Debug, Serialize, Deserialize)]
 pub struct EntityField {
     name: String,
     nullable: bool,
@@ -72,7 +92,7 @@ impl EntityField {
         };
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum EntityFieldType {
     TEXT {
         min: u32,
@@ -97,7 +117,7 @@ pub enum EntityFieldType {
         entity_names: Vec<String>,
     },
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SchemaSettings {}
 impl Schema {
     pub fn new(version: Version, entities: Vec<Entity>, settings: SchemaSettings) -> Self {
@@ -114,6 +134,12 @@ impl Schema {
 
         return Schema::new(version, entities, SchemaSettings {});
     }
+    pub fn export(&self) {
+        let stringified = serde_json::to_string(self)
+            .expect("There is something wrong with the schema serialization");
+        let mut file = File::create("schema.json").expect("correct path");
+        File::write(&mut file, stringified.into_bytes().as_slice()).expect("a valid utf8 string");
+    }
 }
 impl Entity {
     pub fn new(name: &str, kind: EntityType) -> Self {
@@ -121,6 +147,7 @@ impl Entity {
             name: String::from(name),
             kind,
             fields: vec![],
+            dtos: vec![],
         };
         entity.add_fields(&mut entity.kind.generate_base_fields());
         return entity;
