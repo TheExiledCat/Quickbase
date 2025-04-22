@@ -1,10 +1,14 @@
-use std::{collections::HashMap, fs::File, io::Write};
-
+use crate::migrator::{self, Migrator};
 use crate::version::QBASEVERSION;
 use ::serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc, serde};
 use semver::Version;
-use serde_json;
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{Error, Write},
+};
+use uuid::Uuid;
 // use semver::Version;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Schema {
@@ -60,6 +64,7 @@ impl EntityType {
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entity {
+    uuid: String,
     name: String,
     kind: EntityType,
     fields: Vec<EntityField>,
@@ -140,6 +145,11 @@ impl Schema {
         let mut file = File::create("schema.json").expect("correct path");
         File::write(&mut file, stringified.into_bytes().as_slice()).expect("a valid utf8 string");
     }
+    pub fn migrate(&self, new_schema: Self, migrator: impl Migrator) -> Result<Schema, Error> {
+        let mut changes: Vec<migrator::SchemaChange> = vec![];
+        migrator.migrate(changes, &new_schema);
+        return Ok(new_schema);
+    }
 }
 impl Entity {
     pub fn new(name: &str, kind: EntityType) -> Self {
@@ -148,6 +158,7 @@ impl Entity {
             kind,
             fields: vec![],
             dtos: vec![],
+            uuid: Uuid::new_v4().simple().to_string(),
         };
         entity.add_fields(&mut entity.kind.generate_base_fields());
         return entity;
