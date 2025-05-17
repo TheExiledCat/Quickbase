@@ -7,7 +7,6 @@ edition = "2024"
 name = "libqbase"
 [dependencies]
 chrono = {version="0.4.40",features=["serde"]}
-rusqlite = "0.34.0"
 semver = "1.0.26"
 serde = {version= "1.0.219", features = ["derive"]}
 serde-semver = "0.2.1"

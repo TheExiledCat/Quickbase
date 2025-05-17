@@ -4,3 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+axum = "0.8.4"
+hyper = "1.6.0"
+qbase = {path="../lib"}
+rusqlite = "0.35.0"
+serde_json = "1.0.140"
+tokio = { version = "1.45.0", features = ["full"] }
+tower = "0.5.2"

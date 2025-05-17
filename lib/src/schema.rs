@@ -1,13 +1,8 @@
-use crate::migrator::{self, Migrator};
 use crate::version::QBASEVERSION;
 use ::serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc, serde};
 use semver::Version;
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{Error, Write},
-};
+use std::{collections::HashMap, fs::File, io::Write};
 use uuid::Uuid;
 // use semver::Version;
 #[derive(Debug, Serialize, Deserialize)]
@@ -29,6 +24,7 @@ impl EntityType {
             "id",
             false,
             true,
+            true,
             EntityFieldType::TEXT {
                 min: 15,
                 max: 15,
@@ -40,6 +36,7 @@ impl EntityType {
             "created",
             false,
             true,
+            false,
             EntityFieldType::DATE {
                 min_date: DateTime::<Utc>::MIN_UTC,
                 max_date: DateTime::<Utc>::MAX_UTC,
@@ -49,6 +46,7 @@ impl EntityType {
             "updated",
             false,
             true,
+            false,
             EntityFieldType::DATE {
                 min_date: DateTime::<Utc>::MIN_UTC,
                 max_date: DateTime::<Utc>::MAX_UTC,
@@ -64,9 +62,9 @@ impl EntityType {
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entity {
-    uuid: String,
-    name: String,
-    kind: EntityType,
+    pub uuid: String,
+    pub name: String,
+    pub kind: EntityType,
     fields: Vec<EntityField>,
     dtos: Vec<DTO>,
 }
@@ -85,14 +83,22 @@ pub struct EntityField {
     name: String,
     nullable: bool,
     base: bool,
+    primary_key: bool,
     kind: EntityFieldType,
 }
 impl EntityField {
-    pub fn new(name: &str, nullable: bool, base: bool, kind: EntityFieldType) -> Self {
+    pub fn new(
+        name: &str,
+        nullable: bool,
+        base: bool,
+        primary_key: bool,
+        kind: EntityFieldType,
+    ) -> Self {
         return EntityField {
             name: String::from(name),
             nullable,
             base,
+            primary_key,
             kind,
         };
     }
@@ -145,10 +151,17 @@ impl Schema {
         let mut file = File::create("schema.json").expect("correct path");
         File::write(&mut file, stringified.into_bytes().as_slice()).expect("a valid utf8 string");
     }
-    pub fn migrate(&self, new_schema: Self, migrator: impl Migrator) -> Result<Schema, Error> {
-        let mut changes: Vec<migrator::SchemaChange> = vec![];
-        migrator.migrate(changes, &new_schema);
-        return Ok(new_schema);
+    pub fn get_entities(&self) -> &[Entity] {
+        return &self.entities;
+    }
+    pub fn get_entity_by_name(&self, name: String) -> Option<&Entity> {
+        return self
+            .entities
+            .iter()
+            .find(|&e| e.name.to_lowercase() == name);
+    }
+    pub fn get_entity_by_uuid(&self, uuid: &String) -> Option<&Entity> {
+        return self.entities.iter().find(|&e| e.uuid == *uuid);
     }
 }
 impl Entity {
