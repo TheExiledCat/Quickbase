@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 axum = "0.8.4"
+axum-folder-router = "0.3"
 hyper = "1.6.0"
 qbase = {path="../lib"}
 rusqlite = "0.35.0"
