@@ -1,17 +1,10 @@
-use std::{collections::HashMap, io::Error};
+use std::{collections::HashMap, error::Error};
 
-use crate::schema::{DTO, Entity, EntityField, Schema};
+use crate::schema::{Entity, EntityField, Schema};
 
 pub trait Migrator {
-    fn migrate(&self, changes: Vec<SchemaChange>) -> Result<(), Error>;
-}
-pub struct SqliteMigrator {
-    pub connection_string: String,
-}
-impl Migrator for SqliteMigrator {
-    fn migrate(&self, changes: Vec<SchemaChange>) -> Result<(), Error> {
-        todo!()
-    }
+    fn migrate(&mut self, changes: Vec<SchemaChange>) -> Result<(), Box<dyn Error>>;
+    fn ensure_created(&mut self, schema: &Schema) -> Result<(), Box<dyn Error>>;
 }
 pub enum SchemaChange<'a> {
     ADD_ENTITY(&'a Entity),
@@ -24,16 +17,16 @@ pub enum FieldChange<'a> {
     CHANGE_NULLABLE(&'a EntityField, bool),
     RENAME(&'a EntityField, String),
     CHANGE_RULE(&'a EntityField, String, String),
-    CHANGE_DTO(&'a EntityField, DTO),
+    // CHANGE_DTO(&'a EntityField, DTO),
     ADD_FIELD(&'a EntityField),
     REMOVE_FIELD(&'a EntityField),
 }
 pub struct SchemaComparator {}
 impl SchemaComparator {
-    pub fn new(&self) -> Self {
+    pub fn new() -> Self {
         return SchemaComparator {};
     }
-    pub fn compare(&self, source: &Schema, new: &Schema) -> Result<Vec<SchemaChange>, Error> {
+    pub fn compare<'a>(&self, source: &'a Schema, new: &Schema) -> Vec<SchemaChange<'a>> {
         //TODO COMPARE THE SCHEMAS
         let mut changes: Vec<SchemaChange> = vec![];
 
@@ -75,7 +68,7 @@ impl SchemaComparator {
         }
 
         //debug
-        for change in changes {
+        for change in &changes {
             match change {
                 SchemaChange::ADD_ENTITY(entity) => println!("Added entity {0}", entity.name),
                 SchemaChange::REMOVE_ENTITY(entity) => println!("Removed entity {0}", entity.name),
@@ -88,7 +81,7 @@ impl SchemaComparator {
             }
         }
         //?
-        return Ok(vec![]);
+        return changes;
     }
     fn compare_entity<'a>(old: &'a Entity, new: &'a Entity) -> Vec<SchemaChange<'a>> {
         let mut changes: Vec<SchemaChange> = vec![];
