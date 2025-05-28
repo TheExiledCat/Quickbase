@@ -29,17 +29,18 @@ impl SqliteDataSource {
 }
 
 impl DataSource for SqliteDataSource {
-    fn create_database(&self, schema: &Schema) -> DataResult {
+    fn create_database(&mut self, schema: &Schema) -> DataResult {
         // if there can only be one database at once, if it exists already, delete it.
         match fs::exists(&self.source) {
             Ok(val) => {
                 if val == true {
-                    return Err(DataSourceError::CREATION_FAILED);
+                    fs::remove_file(&self.source);
+                    self.conn = Connection::open(&self.source).unwrap();
                 }
             }
             Err(_) => panic!("Something went horribly wrong"),
         }
-
+        println!("creating tables");
         for entity in schema.get_entities() {
             if let Err(e) = self.create_table(entity) {
                 return Err(e);
@@ -50,11 +51,7 @@ impl DataSource for SqliteDataSource {
     }
 
     fn create_table(&self, table: &Entity) -> DataResult {
-        let mut query = String::from(format!(
-            "CREATE TABLE {}_{}(\n",
-            table.name,
-            table.get_uuid()
-        ));
+        let mut query = String::from(format!("CREATE TABLE {}(\n", table.name));
         let fields = table.get_fields();
         for (i, field) in table.get_fields().iter().enumerate() {
             query.push_str(&format!("{} ", field.get_name()));
@@ -86,17 +83,18 @@ impl DataSource for SqliteDataSource {
                 query.push_str(",");
             }
         }
-
+        query.push_str(")");
         if let Some(log) = self.logger {
             log(&query);
         };
+        println!("{}", &query);
 
         match self.conn.execute(&query, []) {
             Ok(_) => (),
             Err(e) => {
                 if let Some(log) = self.logger {
                     log(&format!("{}", e));
-                    return Err(DataSourceError::CREATION_FAILED);
+                    return Err(e);
                 }
             }
         }

@@ -8,7 +8,7 @@ use axum::{
 };
 use axum_folder_router::folder_router;
 use libqbase::{
-    datasource::DataSource,
+    datasource::{DataSource, DataSourceType},
     datasources::{migrator_sqlite::SqliteMigrator, sqlite::SqliteDataSource},
     migrator::{Migrator, SchemaComparator},
     schema::{Schema, SchemaError},
@@ -42,11 +42,13 @@ struct ControllerRouter();
 async fn main() {
     //for now just create the default schema every time
     let schema = Schema::default_schema();
-    let mut data_source = Box::new(SqliteDataSource::new_with_logger(
-        "data.sqlite".into(),
-        |s| println!("{}", s),
-    ));
-    let migrator = SqliteMigrator::new("data.sqlite");
+    let migrator;
+    if let DataSourceType::SQLITE { connection_string } = schema.get_settings().get_source_type() {
+        migrator = SqliteMigrator::new(&connection_string);
+    } else {
+        panic!("no support for other migrators yet");
+    }
+    migrator.ensure_created(&schema);
     let mut state = Arc::new(RwLock::new(AppState {
         schema,
         migrator: Box::new(migrator),

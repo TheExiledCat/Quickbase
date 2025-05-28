@@ -1,3 +1,4 @@
+use rusqlite::Error;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -6,20 +7,21 @@ use crate::{
 };
 #[derive(Debug, Deserialize, Serialize)]
 pub enum DataSourceType {
-    SQLITE,
-    PSQL,
-    MARIA_DB,
+    SQLITE { connection_string: String },
+    PSQL { connection_string: String },
+    MARIA_DB { connection_string: String },
 }
+#[derive(Debug)]
 pub enum DataSourceError {
     CONNECTION_FAILED,
     SYNTAX_ERROR,
     CREATION_FAILED,
     ENTITY_CREATION_FAILED,
 }
-pub type DataResult = Result<(), DataSourceError>;
+pub type DataResult = Result<(), Error>;
 pub trait DataSource {
     //Create
-    fn create_database(&self, schema: &Schema) -> DataResult;
+    fn create_database(&mut self, schema: &Schema) -> DataResult;
     fn create_table(&self, table: &Entity) -> DataResult;
 
     //Remove

@@ -139,23 +139,22 @@ pub enum SchemaError {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SchemaSettings {
     data_source: DataSourceType,
-    data_source_connection_string: String,
 }
 impl Schema {
     pub fn validate(schema: &Schema) -> bool {
         //define invalid cases
 
-        //ensure that there is atleast one AUTH table and that no two tables have the same uuid
-        let mut entity_uuids: HashSet<String> = HashSet::new();
+        //ensure that there is atleast one AUTH table and that no two tables have the same name
+        let mut entity_names: HashSet<String> = HashSet::new();
         let mut auth_found = false;
         for entity in schema.get_entities() {
             if entity.kind == EntityType::AUTH {
                 auth_found = true;
             }
-            if entity_uuids.contains(&entity.uuid) {
+            if entity_names.contains(&entity.name) {
                 return false;
             }
-            entity_uuids.insert(entity.uuid.clone());
+            entity_names.insert(entity.name.clone());
         }
 
         if auth_found == false {
@@ -171,6 +170,7 @@ impl Schema {
             settings,
         };
     }
+
     pub fn default_schema() -> Self {
         let version = Version::parse(QBASEVERSION).expect("Correct semver for qbase");
         let mut entities: Vec<Entity> = vec![];
@@ -178,6 +178,7 @@ impl Schema {
 
         return Schema::new(version, entities, SchemaSettings::default());
     }
+
     pub fn export(&self) {
         let stringified = serde_json::to_string(self)
             .expect("There is something wrong with the schema serialization");
@@ -187,7 +188,7 @@ impl Schema {
     pub fn get_entities(&self) -> &[Entity] {
         return &self.entities;
     }
-    pub fn get_entity_by_name(&self, name: String) -> Option<&Entity> {
+    pub fn get_entity_by_name(&self, name: &str) -> Option<&Entity> {
         return self
             .entities
             .iter()
@@ -195,6 +196,15 @@ impl Schema {
     }
     pub fn get_entity_by_uuid(&self, uuid: &String) -> Option<&Entity> {
         return self.entities.iter().find(|&e| e.uuid == *uuid);
+    }
+    pub fn get_settings(&self) -> &SchemaSettings {
+        return &self.settings;
+    }
+
+    pub fn add_entity(&mut self, entity: Entity) {
+        if let None = self.get_entity_by_name(&entity.name) {
+            self.entities.push(entity);
+        }
     }
 }
 impl Entity {
@@ -228,8 +238,13 @@ impl Entity {
 impl SchemaSettings {
     pub fn default() -> Self {
         return SchemaSettings {
-            data_source: DataSourceType::SQLITE,
-            data_source_connection_string: "data.sqlite".into(),
+            data_source: DataSourceType::SQLITE {
+                connection_string: "data.sqlite".into(),
+            },
         };
+    }
+
+    pub fn get_source_type(&self) -> &DataSourceType {
+        return &self.data_source;
     }
 }

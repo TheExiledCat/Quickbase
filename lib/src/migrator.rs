@@ -1,10 +1,12 @@
-use std::{collections::HashMap, error::Error};
+use std::collections::HashMap;
+
+use rusqlite::Error;
 
 use crate::schema::{Entity, EntityField, Schema};
 
 pub trait Migrator: Send + Sync {
-    fn migrate(&mut self, changes: Vec<SchemaChange>) -> Result<(), Box<dyn Error>>;
-    fn ensure_created(&mut self, schema: &Schema) -> Result<(), Box<dyn Error>>;
+    fn migrate(&self, changes: Vec<SchemaChange>) -> Result<(), Error>;
+    fn ensure_created(&self, schema: &Schema) -> Result<(), Error>;
 }
 pub enum SchemaChange<'a> {
     ADD_ENTITY(&'a Entity),
@@ -36,16 +38,16 @@ impl SchemaComparator {
         let source_entities: HashMap<String, &Entity> = source
             .get_entities()
             .iter()
-            .map(|e| (e.uuid.clone(), e))
+            .map(|e| (e.name.clone(), e))
             .collect();
         let new_entities: HashMap<String, &Entity> = source
             .get_entities()
             .iter()
-            .map(|e| (e.uuid.clone(), e))
+            .map(|e| (e.name.clone(), e))
             .collect();
         //Check for changed or remove entities
-        for (uuid, entity) in &source_entities {
-            let other = new_entities.get(uuid);
+        for (name, entity) in &source_entities {
+            let other = new_entities.get(name);
             match other {
                 Some(e) => {
                     // entity is still there
@@ -60,8 +62,8 @@ impl SchemaComparator {
         }
 
         //check new schema for any new entities
-        for (uuid, new_entity) in &new_entities {
-            if (source_entities.contains_key(uuid)) {
+        for (name, new_entity) in &new_entities {
+            if (source_entities.contains_key(name)) {
                 continue;
             }
             changes.push(SchemaChange::ADD_ENTITY(new_entity))
