@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 use axum::{
     Router,
@@ -16,7 +16,7 @@ use libqbase::{
 
 struct AppState {
     schema: Schema,
-    // migrator: Box<dyn Migrator>,
+    migrator: Box<dyn Migrator>,
 }
 
 impl AppState {
@@ -33,7 +33,7 @@ impl AppState {
         return Err(SchemaError::Invalid);
     }
 }
-type App = Arc<AppState>;
+type App = Arc<RwLock<AppState>>;
 
 #[folder_router("./api", App)]
 struct ControllerRouter();
@@ -46,11 +46,11 @@ async fn main() {
         "data.sqlite".into(),
         |s| println!("{}", s),
     ));
-    let migrator = SqliteMigrator::new(&mut data_source);
-    let mut state = Arc::new(AppState {
+    let migrator = SqliteMigrator::new("data.sqlite");
+    let mut state = Arc::new(RwLock::new(AppState {
         schema,
-        migrator: Arc::new(Mutex::new(migrator)),
-    });
+        migrator: Box::new(migrator),
+    }));
     let controller: Router<App> = ControllerRouter::into_router();
     let app = controller
         .layer(middleware::from_fn(logger_middleware))

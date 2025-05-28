@@ -6,17 +6,17 @@ use crate::{
 
 use super::sqlite::SqliteDataSource;
 
-pub struct SqliteMigrator<'a> {
-    data_source: &'a SqliteDataSource,
+pub struct SqliteMigrator {
+    database_file: String,
 }
-impl<'a> SqliteMigrator<'a> {
-    pub fn new(source: &'a SqliteDataSource) -> Self {
+impl SqliteMigrator {
+    pub fn new(database_file: &str) -> Self {
         return Self {
-            data_source: source,
+            database_file: database_file.into(),
         };
     }
 }
-impl<'a> Migrator for SqliteMigrator<'a> {
+impl Migrator for SqliteMigrator {
     fn migrate(
         &mut self,
         changes: Vec<crate::migrator::SchemaChange>,
@@ -25,8 +25,9 @@ impl<'a> Migrator for SqliteMigrator<'a> {
     }
 
     fn ensure_created(&mut self, schema: &Schema) -> Result<(), Box<dyn std::error::Error>> {
-        if !self.data_source.database_exists() {
-            if let Err(_e) = self.data_source.create_database(schema) {
+        let source = SqliteDataSource::new(self.database_file.clone());
+        if !source.database_exists() {
+            if let Err(_e) = source.create_database(schema) {
                 panic!("Something went wrong during database creation");
             }
         }

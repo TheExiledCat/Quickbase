@@ -2,7 +2,7 @@ use std::{collections::HashMap, error::Error};
 
 use crate::schema::{Entity, EntityField, Schema};
 
-pub trait Migrator {
+pub trait Migrator: Send + Sync {
     fn migrate(&mut self, changes: Vec<SchemaChange>) -> Result<(), Box<dyn Error>>;
     fn ensure_created(&mut self, schema: &Schema) -> Result<(), Box<dyn Error>>;
 }
