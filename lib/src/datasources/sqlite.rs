@@ -30,15 +30,20 @@ impl SqliteDataSource {
 
 impl DataSource for SqliteDataSource {
     fn create_database(&mut self, schema: &Schema) -> DataResult {
-        // if there can only be one database at once, if it exists already, delete it.
-        match fs::exists(&self.source) {
-            Ok(val) => {
-                if val == true {
-                    fs::remove_file(&self.source);
-                    self.conn = Connection::open(&self.source).unwrap();
-                }
+        //if there are already tables, assume the database has been created fine.
+        let query = "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name != 'android_metadata' AND name != 'sqlite_sequence';";
+        let mut stmt = self.conn.prepare(query).unwrap();
+        let mut rows = stmt.query([]).unwrap();
+        println!("{}", query);
+        if let Some(row) = rows.next().unwrap() {
+            let table_count = row.get::<usize, u32>(0).unwrap();
+            println!("tables: {}", table_count);
+            if table_count > 0 {
+                println!("database already exists");
+                return Ok(());
             }
-            Err(_) => panic!("Something went horribly wrong"),
+        } else {
+            panic!("error???")
         }
         println!("creating tables");
         for entity in schema.get_entities() {
