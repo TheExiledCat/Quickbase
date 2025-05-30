@@ -34,7 +34,11 @@ pub async fn post(
             }
         }
     }
-    state.read().unwrap().migrator.migrate(vec![new_change]);
+    state
+        .read()
+        .unwrap()
+        .migrator
+        .migrate(vec![new_change], &state.read().unwrap().schema);
     return (
         StatusCode::OK,
         Html(String::from(format!(

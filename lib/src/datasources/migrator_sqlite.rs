@@ -1,8 +1,11 @@
 use chrono::NaiveWeek;
+use inquire::{self, Password, Text};
 use rusqlite::Error;
+use sha2::{Digest, Sha256, digest::DynDigest};
 
 use crate::{
     datasource::{DataResult, DataSource},
+    hashing,
     migrator::Migrator,
     schema::Schema,
 };
@@ -20,7 +23,11 @@ impl SqliteMigrator {
     }
 }
 impl Migrator for SqliteMigrator {
-    fn migrate(&self, changes: Vec<crate::migrator::SchemaChange>) -> Result<(), rusqlite::Error> {
+    fn migrate(
+        &self,
+        changes: Vec<crate::migrator::SchemaChange>,
+        schema: &Schema,
+    ) -> Result<(), rusqlite::Error> {
         let source = SqliteDataSource::new(self.database_file.clone());
 
         for change in changes {
@@ -35,13 +42,14 @@ impl Migrator for SqliteMigrator {
                 }
             }
         }
-
+        source.update_schema(&schema);
         return Ok(());
     }
 
     fn ensure_created(&self, schema: &Schema) -> Result<Option<Schema>, Error> {
         let mut source = SqliteDataSource::new(self.database_file.clone());
         println!("Creating db");
+        println!("Creating root admin");
         return match source.create_database(schema) {
             Ok(_) => Ok(None),
             Err(e) => match e {

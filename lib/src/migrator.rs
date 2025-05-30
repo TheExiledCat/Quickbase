@@ -5,7 +5,7 @@ use rusqlite::Error;
 use crate::schema::{Entity, EntityField, Schema};
 
 pub trait Migrator: Send + Sync {
-    fn migrate(&self, changes: Vec<SchemaChange>) -> Result<(), Error>;
+    fn migrate(&self, changes: Vec<SchemaChange>, new_schema: &Schema) -> Result<(), Error>;
     fn ensure_created(&self, schema: &Schema) -> Result<Option<Schema>, Error>;
 }
 pub enum SchemaChange {

@@ -7,18 +7,44 @@ use axum::{
     response::Response,
 };
 use axum_folder_router::folder_router;
+use chrono::{Duration, Utc};
+use jsonwebtoken::{EncodingKey, Header, encode};
 use libqbase::{
     datasource::{DataSource, DataSourceType},
     datasources::{migrator_sqlite::SqliteMigrator, sqlite::SqliteDataSource},
     migrator::{Migrator, SchemaComparator},
     schema::{Schema, SchemaError},
 };
+use serde::{Deserialize, Serialize};
 
 struct AppState {
     schema: Schema,
     migrator: Box<dyn Migrator>,
 }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Claims {
+    sub: String,
+    exp: usize,
+}
+const APP_SECRET: &'static str = "QBASE_SECRET";
+pub fn create_jwt(user_id: &str) -> (String, usize) {
+    let expiration = (Utc::now() + Duration::hours(24)).timestamp() as usize;
+    let claims = Claims {
+        sub: user_id.to_owned(),
+        exp: expiration,
+    };
 
+    return (
+        encode(
+            &Header::default(),
+            &claims,
+            //TODO USE ACTUAL SECRET
+            &EncodingKey::from_secret(APP_SECRET.as_bytes()),
+        )
+        .unwrap(),
+        expiration,
+    );
+}
 impl AppState {
     pub fn get_schema(&self) -> &Schema {
         return &self.schema;

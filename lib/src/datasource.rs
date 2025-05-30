@@ -34,7 +34,8 @@ pub trait DataSource {
 
     //Validate
     fn database_exists(&self) -> bool;
-
+    fn get_admin_login(&self, identifier: String, hashed_password: String) -> Option<u32>;
     // get
     fn load_schema(&self) -> Schema;
+    fn update_schema(&self, schema: &Schema) -> DataResult;
 }

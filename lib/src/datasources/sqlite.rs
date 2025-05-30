@@ -1,10 +1,12 @@
 use std::fs;
 
+use inquire::{Password, Text};
 use rusqlite::fallible_iterator::Unwrap;
 use rusqlite::{self, Connection, Result};
 use serde_json::json;
 
 use crate::datasource::{DataResult, DataSource, DataSourceError};
+use crate::hashing;
 use crate::migrator::SchemaChange;
 use crate::schema::{Entity, EntityFieldType, Schema};
 pub struct SqliteDataSource {
@@ -46,24 +48,36 @@ impl DataSource for SqliteDataSource {
         } else {
             panic!("error???")
         }
+        let username = Text::new("username\n>").prompt().expect("a valid string");
+        let email = Text::new("email\n>").prompt().expect("a valid string");
+        let password = Password::new("password\n>")
+            .without_confirmation()
+            .prompt()
+            .expect("valid string");
+        let hashed_pw = hashing::hash_sha256(&password);
+        //create the admins table and root user, assume the password is already hashed
+        let query = "CREATE TABLE qbase_admins(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            email TEXT NOT NULL,
+            password_hash TEXT NOT NULL
+        )";
+        println!("{}", query);
+        self.conn.execute(&query, []);
+
+        let query = "
+            INSERT INTO qbase_admins(username, email, password_hash) VALUES(?1,?2,?3)
+        ";
+        println!("{}", query);
+        self.conn.execute(query, [username, email, hashed_pw]);
+        //create schema
         println!("creating tables");
         for entity in schema.get_entities() {
             if let Err(e) = self.create_table(entity) {
                 return Err(e);
             }
         }
-
-        //insert schema into db
-        let query = "CREATE TABLE qbase_schema(
-            schema TEXT NOT NULL
-        )";
-        println!("{}", query);
-        self.conn.execute(query, []).unwrap();
-        let query = "INSERT INTO qbase_schema(schema) VALUES(?1)";
-        println!("{}", query);
-        self.conn
-            .execute(query, [json!(schema).to_string()])
-            .unwrap();
+        self.update_schema(&schema);
         return Ok(());
     }
 
@@ -150,5 +164,34 @@ impl DataSource for SqliteDataSource {
         .unwrap();
 
         return schema;
+    }
+    fn get_admin_login(&self, identifier: String, hashed_password: String) -> Option<u32> {
+        let query = "SELECT *
+FROM qbase_admins
+WHERE (username = ?1 OR email = ?1)
+  AND password = ?2;
+";
+        return match self
+            .conn
+            .query_one(query, [identifier, hashed_password], |row| {
+                return row.get::<usize, usize>(0);
+            }) {
+            Ok(id) => Some(id as u32),
+            Err(_) => None,
+        };
+    }
+    fn update_schema(&self, schema: &Schema) -> DataResult {
+        //insert schema into db
+        let query = "CREATE TABLE qbase_schema(
+            schema TEXT NOT NULL
+        )";
+        println!("{}", query);
+        self.conn.execute(query, []).unwrap();
+        let query = "INSERT INTO qbase_schema(schema) VALUES(?1)";
+        println!("{}", query);
+        self.conn
+            .execute(query, [json!(schema).to_string()])
+            .unwrap();
+        return Ok(());
     }
 }
