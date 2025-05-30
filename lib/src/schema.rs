@@ -1,14 +1,8 @@
-use crate::{datasource::DataSourceType, version::QBASEVERSION};
-use ::serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc, serde};
+use crate::{datasource::DataSourceType, migrator::SchemaChange, version::QBASEVERSION};
+use chrono::{DateTime, Utc};
 use semver::Version;
-use std::{
-    collections::{HashMap, HashSet},
-    error::Error,
-    fmt::Display,
-    fs::File,
-    io::Write,
-};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashSet, fs::File, io::Write};
 use uuid::Uuid;
 // use semver::Version;
 #[derive(Debug, Serialize, Deserialize)]
@@ -17,7 +11,7 @@ pub struct Schema {
     entities: Vec<Entity>,
     settings: SchemaSettings,
 }
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub enum EntityType {
     AUTH,
     DATA,
@@ -66,14 +60,14 @@ impl EntityType {
         return fields;
     }
 }
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Entity {
     pub uuid: String,
     pub name: String,
     pub kind: EntityType,
     fields: Vec<EntityField>,
 }
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EntityField {
     name: String,
     nullable: bool,
@@ -107,7 +101,7 @@ impl EntityField {
         return &self.nullable;
     }
 }
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum EntityFieldType {
     TEXT {
         min: u32,
@@ -134,7 +128,8 @@ pub enum EntityFieldType {
 }
 #[derive(Debug)]
 pub enum SchemaError {
-    Invalid,
+    INVALID,
+    DUPLICATE_ENTITY,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SchemaSettings {
@@ -192,7 +187,7 @@ impl Schema {
         return self
             .entities
             .iter()
-            .find(|&e| e.name.to_lowercase() == name);
+            .find(|&e| e.name.to_lowercase() == name.to_lowercase());
     }
     pub fn get_entity_by_uuid(&self, uuid: &String) -> Option<&Entity> {
         return self.entities.iter().find(|&e| e.uuid == *uuid);
@@ -201,10 +196,14 @@ impl Schema {
         return &self.settings;
     }
 
-    pub fn add_entity(&mut self, entity: Entity) {
+    pub fn add_entity(&mut self, entity: Entity) -> Result<SchemaChange, SchemaError> {
+        let change = SchemaChange::ADD_ENTITY(entity.clone());
         if let None = self.get_entity_by_name(&entity.name) {
             self.entities.push(entity);
+            return Ok(change);
         }
+        println!("entity already exists:{}", &entity.name);
+        return Err(SchemaError::DUPLICATE_ENTITY);
     }
 }
 impl Entity {

@@ -34,4 +34,7 @@ pub trait DataSource {
 
     //Validate
     fn database_exists(&self) -> bool;
+
+    // get
+    fn load_schema(&self) -> Schema;
 }

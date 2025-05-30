@@ -6,29 +6,29 @@ use crate::schema::{Entity, EntityField, Schema};
 
 pub trait Migrator: Send + Sync {
     fn migrate(&self, changes: Vec<SchemaChange>) -> Result<(), Error>;
-    fn ensure_created(&self, schema: &Schema) -> Result<(), Error>;
+    fn ensure_created(&self, schema: &Schema) -> Result<Option<Schema>, Error>;
 }
-pub enum SchemaChange<'a> {
-    ADD_ENTITY(&'a Entity),
-    REMOVE_ENTITY(&'a Entity),
-    RENAME_ENTITY(&'a Entity, String),
-    CHANGE_ENTITY_FIELD(&'a Entity, Vec<FieldChange<'a>>),
+pub enum SchemaChange {
+    ADD_ENTITY(Entity),
+    REMOVE_ENTITY(Entity),
+    RENAME_ENTITY(Entity, String),
+    CHANGE_ENTITY_FIELD(Entity, Vec<FieldChange>),
 }
 
-pub enum FieldChange<'a> {
-    CHANGE_NULLABLE(&'a EntityField, bool),
-    RENAME(&'a EntityField, String),
-    CHANGE_RULE(&'a EntityField, String, String),
+pub enum FieldChange {
+    CHANGE_NULLABLE(EntityField, bool),
+    RENAME(EntityField, String),
+    CHANGE_RULE(EntityField, String, String),
     // CHANGE_DTO(&'a EntityField, DTO),
-    ADD_FIELD(&'a EntityField),
-    REMOVE_FIELD(&'a EntityField),
+    ADD_FIELD(EntityField),
+    REMOVE_FIELD(EntityField),
 }
 pub struct SchemaComparator {}
 impl SchemaComparator {
     pub fn new() -> Self {
         return SchemaComparator {};
     }
-    pub fn compare<'a>(&self, source: &'a Schema, new: &Schema) -> Vec<SchemaChange<'a>> {
+    pub fn compare<'a>(&self, source: &'a Schema, new: &Schema) -> Vec<SchemaChange> {
         //TODO COMPARE THE SCHEMAS
         let mut changes: Vec<SchemaChange> = vec![];
 
@@ -48,25 +48,30 @@ impl SchemaComparator {
         //Check for changed or remove entities
         for (name, entity) in &source_entities {
             let other = new_entities.get(name);
+            let cloned_entity = (*entity).clone();
             match other {
                 Some(e) => {
                     // entity is still there
                     // check for other differences
-                    changes.append(&mut SchemaComparator::compare_entity(entity, e));
+                    changes.append(&mut SchemaComparator::compare_entity(
+                        cloned_entity,
+                        (**e).clone(),
+                    ));
                 }
                 None => {
                     //entity got removed.
-                    changes.push(SchemaChange::REMOVE_ENTITY(entity));
+                    changes.push(SchemaChange::REMOVE_ENTITY(cloned_entity));
                 }
             }
         }
 
         //check new schema for any new entities
         for (name, new_entity) in &new_entities {
-            if (source_entities.contains_key(name)) {
+            let cloned_entity = (*new_entity).clone();
+            if source_entities.contains_key(name) {
                 continue;
             }
-            changes.push(SchemaChange::ADD_ENTITY(new_entity))
+            changes.push(SchemaChange::ADD_ENTITY(cloned_entity));
         }
 
         //debug
@@ -85,7 +90,7 @@ impl SchemaComparator {
         //?
         return changes;
     }
-    fn compare_entity<'a>(old: &'a Entity, new: &'a Entity) -> Vec<SchemaChange<'a>> {
+    fn compare_entity(old: Entity, new: Entity) -> Vec<SchemaChange> {
         let mut changes: Vec<SchemaChange> = vec![];
 
         return changes;

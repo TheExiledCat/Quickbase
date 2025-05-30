@@ -30,7 +30,7 @@ impl AppState {
 
             return Ok(&self.schema);
         }
-        return Err(SchemaError::Invalid);
+        return Err(SchemaError::INVALID);
     }
 }
 type App = Arc<RwLock<AppState>>;
@@ -40,16 +40,22 @@ struct ControllerRouter();
 
 #[tokio::main]
 async fn main() {
-    //for now just create the default schema every time
-    let schema = Schema::default_schema();
+    let mut schema = Schema::default_schema();
     let migrator;
     if let DataSourceType::SQLITE { connection_string } = schema.get_settings().get_source_type() {
         migrator = SqliteMigrator::new(&connection_string);
     } else {
         panic!("no support for other migrators yet");
     }
-    migrator.ensure_created(&schema);
-    let mut state = Arc::new(RwLock::new(AppState {
+    // create the database if it doesnt exist with the default schema, otherwise load the schema from the database instead.
+    match migrator.ensure_created(&schema) {
+        Ok(os) => match os {
+            Some(s) => schema = s,
+            None => (),
+        },
+        Err(e) => panic!("{}", e),
+    };
+    let state = Arc::new(RwLock::new(AppState {
         schema,
         migrator: Box::new(migrator),
     }));

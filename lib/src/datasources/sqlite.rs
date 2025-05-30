@@ -2,6 +2,7 @@ use std::fs;
 
 use rusqlite::fallible_iterator::Unwrap;
 use rusqlite::{self, Connection, Result};
+use serde_json::json;
 
 use crate::datasource::{DataResult, DataSource, DataSourceError};
 use crate::migrator::SchemaChange;
@@ -40,7 +41,7 @@ impl DataSource for SqliteDataSource {
             println!("tables: {}", table_count);
             if table_count > 0 {
                 println!("database already exists");
-                return Ok(());
+                return Err(rusqlite::Error::ExecuteReturnedResults);
             }
         } else {
             panic!("error???")
@@ -52,6 +53,17 @@ impl DataSource for SqliteDataSource {
             }
         }
 
+        //insert schema into db
+        let query = "CREATE TABLE qbase_schema(
+            schema TEXT NOT NULL
+        )";
+        println!("{}", query);
+        self.conn.execute(query, []).unwrap();
+        let query = "INSERT INTO qbase_schema(schema) VALUES(?1)";
+        println!("{}", query);
+        self.conn
+            .execute(query, [json!(schema).to_string()])
+            .unwrap();
         return Ok(());
     }
 
@@ -125,5 +137,18 @@ impl DataSource for SqliteDataSource {
 
     fn database_exists(&self) -> bool {
         return fs::exists(&self.source).unwrap();
+    }
+
+    fn load_schema(&self) -> Schema {
+        let query = "SELECT schema FROM qbase_schema";
+        let schema: Schema = serde_json::from_str(
+            &self
+                .conn
+                .query_one(query, [], |row| row.get::<usize, String>(0))
+                .unwrap(),
+        )
+        .unwrap();
+
+        return schema;
     }
 }
