@@ -5,23 +5,36 @@ use axum::{
 };
 use hyper::StatusCode;
 use libqbase::{datasource::DataSource, datasources::sqlite::SqliteDataSource, hashing};
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::App;
-
+#[derive(Serialize, Deserialize)]
 pub struct LoginDto {
     pub identifier: String,
     pub password: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct LoginTokenDto {
+    pub token: String,
+    pub expiration: usize,
+}
 pub enum JsonOrFail {
     Json(Json<Value>),
     Fail(StatusCode, String),
 }
-pub async fn post(
-    State(state): State<App>,
-    Json(login): Json<LoginDto>,
-) -> Result<Response, Response> {
+impl IntoResponse for JsonOrFail {
+    fn into_response(self) -> Response {
+        match self {
+            JsonOrFail::Json(j) => (StatusCode::OK, j).into_response(),
+            JsonOrFail::Fail(status, html) => (status, Html(html)).into_response(),
+        }
+    }
+}
+
+pub async fn post(State(state): State<App>, Json(login): Json<LoginDto>) -> impl IntoResponse {
+    println!("login attempt");
     let hashed_pw = hashing::hash_sha256(&login.password);
     let admin_id: Option<u32> = match state
         .read()
@@ -38,16 +51,19 @@ pub async fn post(
         libqbase::datasource::DataSourceType::MARIA_DB { connection_string } => todo!(),
     };
     let token;
+
     if let Some(id) = admin_id {
-        token = crate::create_jwt(&id.to_string());
+        let token_data = crate::create_jwt(&id.to_string());
+        token = LoginTokenDto {
+            token: token_data.0,
+            expiration: token_data.1,
+        };
     } else {
-        return Err((
+        return JsonOrFail::Fail(
             StatusCode::UNAUTHORIZED,
-            Html("<h1>Unknown identifier or password</h1>"),
-        )
-            .into_response())
-        .into_response();
+            "Incorrect identifier or password".to_owned(),
+        );
     }
 
-    return Ok((StatusCode::OK, Json(json!(token))).into_response());
+    return JsonOrFail::Json(Json(json!(token)));
 }

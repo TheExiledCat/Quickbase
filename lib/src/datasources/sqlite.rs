@@ -48,10 +48,9 @@ impl DataSource for SqliteDataSource {
         } else {
             panic!("error???")
         }
-        let username = Text::new("username\n>").prompt().expect("a valid string");
-        let email = Text::new("email\n>").prompt().expect("a valid string");
-        let password = Password::new("password\n>")
-            .without_confirmation()
+        let username = Text::new("username\n> ").prompt().expect("a valid string");
+        let email = Text::new("email\n> ").prompt().expect("a valid string");
+        let password = Password::new("password\n> ")
             .prompt()
             .expect("valid string");
         let hashed_pw = hashing::hash_sha256(&password);
@@ -169,9 +168,14 @@ impl DataSource for SqliteDataSource {
         let query = "SELECT *
 FROM qbase_admins
 WHERE (username = ?1 OR email = ?1)
-  AND password = ?2;
+  AND password_hash = ?2;
 ";
-        return match self
+        println!("{}", &query);
+        println!(
+            "ident: {}, password_hash: {}",
+            &identifier, &hashed_password
+        );
+        let result = match self
             .conn
             .query_one(query, [identifier, hashed_password], |row| {
                 return row.get::<usize, usize>(0);
@@ -179,6 +183,8 @@ WHERE (username = ?1 OR email = ?1)
             Ok(id) => Some(id as u32),
             Err(_) => None,
         };
+        println!("{}", &result.unwrap());
+        return result;
     }
     fn update_schema(&self, schema: &Schema) -> DataResult {
         //insert schema into db
