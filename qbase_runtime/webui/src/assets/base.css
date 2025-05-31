@@ -59,9 +59,11 @@
 }
 
 body {
+  display: flex;
   min-height: 100vh;
-  color: var(--color-text);
-  background: var(--color-background);
+  height: 100%;
+  color: var(--p-text-color);
+  background: var(--p-surface-800);
   transition:
     color 0.5s,
     background-color 0.5s;

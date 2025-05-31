@@ -16,6 +16,7 @@ use libqbase::{
     schema::{Schema, SchemaError},
 };
 use serde::{Deserialize, Serialize};
+use tower_http::cors::CorsLayer;
 
 struct AppState {
     schema: Schema,
@@ -88,6 +89,7 @@ async fn main() {
     let controller: Router<App> = ControllerRouter::into_router();
     let app = controller
         .layer(middleware::from_fn(logger_middleware))
+        .layer(CorsLayer::permissive())
         .with_state(state);
     let host = "127.0.0.1:3000";
     let listener = tokio::net::TcpListener::bind(host).await.unwrap();

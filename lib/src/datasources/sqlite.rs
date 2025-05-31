@@ -183,7 +183,6 @@ WHERE (username = ?1 OR email = ?1)
             Ok(id) => Some(id as u32),
             Err(_) => None,
         };
-        println!("{}", &result.unwrap());
         return result;
     }
     fn update_schema(&self, schema: &Schema) -> DataResult {

@@ -9,7 +9,8 @@ name = "libqbase"
 chrono = {version="0.4.40",features=["serde"]}
 hex = "0.4.3"
 inquire = "0.7.5"
-rusqlite = "0.36.0"
+libsqlite3-sys = "0.34.0"
+rusqlite = {version="0.36.0" ,features = ["bundled"]}
 semver = "1.0.26"
 serde = {version= "1.0.219", features = ["derive"]}
 serde-semver = "0.2.1"
