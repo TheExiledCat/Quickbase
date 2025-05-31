@@ -4,7 +4,8 @@ use axum::{
     Router,
     extract::Request,
     middleware::{self, Next},
-    response::Response,
+    response::{IntoResponse, Redirect, Response},
+    routing::get,
 };
 use axum_folder_router::folder_router;
 use chrono::{Duration, Utc};
@@ -90,12 +91,17 @@ async fn main() {
     let app = controller
         .layer(middleware::from_fn(logger_middleware))
         .layer(CorsLayer::permissive())
+        .route("/webui/", get(webui_redirect))
         .with_state(state);
     let host = "127.0.0.1:3000";
     let listener = tokio::net::TcpListener::bind(host).await.unwrap();
     println!("server listening on http://{}", host);
 
     axum::serve(listener, app).await.unwrap();
+}
+
+async fn webui_redirect() -> impl IntoResponse {
+    Redirect::temporary("/webui")
 }
 
 enum LogLevel {
