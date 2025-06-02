@@ -5,6 +5,9 @@ edition = "2024"
 [[bin]]
 name="quickbase"
 path="./src/main.rs"
+[build-dependencies]
+libflate = "2.1.0"
+
 [dependencies]
 axum = "0.8.4"
 axum-folder-router = "0.3"

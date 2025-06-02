@@ -1,3 +1,4 @@
+use axum::http::HeaderMap;
 use axum::{
     extract::OriginalUri,
     http::{StatusCode, header},
@@ -9,33 +10,49 @@ use rust_embed::RustEmbed;
 #[folder = "webui/dist/"]
 struct WebAssets;
 
-pub async fn get(OriginalUri(uri): OriginalUri) -> impl IntoResponse {
+pub async fn get(OriginalUri(uri): OriginalUri, headers: HeaderMap) -> impl IntoResponse {
     let path = uri
         .path()
-        .strip_prefix("/webui/")
-        .unwrap_or("")
-        .trim_end_matches('/');
+        .trim_start_matches("/webui")
+        .trim_start_matches('/');
+    let accept_gzip = headers
+        .get(header::ACCEPT_ENCODING)
+        .map(|v| v.to_str().unwrap_or("").contains("gzip"))
+        .unwrap_or(false);
 
-    // Try to get a static asset (like js/css/img)
-    if let Some(file) = WebAssets::get(path) {
+    let gz_path = format!("{}.gz", path);
+
+    if accept_gzip {
+        if let Some(asset) = WebAssets::get(&gz_path) {
+            let mime = from_path(path).first_or_octet_stream();
+            return (
+                [
+                    (header::CONTENT_TYPE, mime.to_string()),
+                    (header::CONTENT_ENCODING, "gzip".to_string()),
+                ],
+                asset.data.into_owned(),
+            )
+                .into_response();
+        }
+    }
+
+    if let Some(asset) = WebAssets::get(path) {
         let mime = from_path(path).first_or_octet_stream();
         return (
             [(header::CONTENT_TYPE, mime.to_string())],
-            file.data.into_owned(),
+            asset.data.into_owned(),
         )
             .into_response();
     }
 
-    // Fallback to index.html for Vue Router to handle the route
-    match WebAssets::get("index.html") {
-        Some(index) => {
-            let mime = from_path("index.html").first_or_octet_stream();
-            (
-                [(header::CONTENT_TYPE, mime.to_string())],
-                index.data.into_owned(),
-            )
-                .into_response()
-        }
-        None => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    // Fallback to SPA routing
+    if let Some(asset) = WebAssets::get("index.html.gz") {
+        return (
+            [("Content-Type", "text/html"), ("Content-Encoding", "gzip")],
+            asset.data.into_owned(),
+        )
+            .into_response();
     }
+
+    StatusCode::NOT_FOUND.into_response()
 }
