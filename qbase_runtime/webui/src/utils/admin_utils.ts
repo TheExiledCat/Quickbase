@@ -8,7 +8,12 @@ interface ILoginTokenDto {
 const adminTokenCookie = "admin_token";
 const api = {
   get url() {
-    return "http://localhost:3000/admin/";
+    return Boolean(import.meta.env.PROD) ?
+      "/admin/" :
+      "http://localhost:3000/admin/";
+  },
+  logout(){
+    cookies.erase(adminTokenCookie);
   },
   async login(identifier: string, password: string): Promise<boolean> {
     try {

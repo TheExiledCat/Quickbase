@@ -12,8 +12,10 @@
   },
   "dependencies": {
     "@primeuix/themes": "^1.1.1",
+    "@vueuse/core": "^13.3.0",
     "axios": "^1.9.0",
     "browser-cookies": "^1.2.0",
+    "linq": "^4.0.3",
     "primeicons": "^7.0.0",
     "primevue": "^4.3.4",
     "vue": "^3.5.13",
