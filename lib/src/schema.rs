@@ -3,15 +3,18 @@ use chrono::{DateTime, Utc};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, fs::File, io::Write};
+use ts_rs::TS;
 use uuid::Uuid;
 // use semver::Version;
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct Schema {
     version: Version,
     entities: Vec<Entity>,
     settings: SchemaSettings,
 }
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, TS)]
+#[ts(export)]
 pub enum EntityType {
     AUTH,
     DATA,
@@ -60,14 +63,16 @@ impl EntityType {
         return fields;
     }
 }
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(TS, Debug, Serialize, Deserialize, Clone)]
+#[ts(export)]
 pub struct Entity {
     pub uuid: String,
     pub name: String,
     pub kind: EntityType,
     fields: Vec<EntityField>,
 }
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(TS, Debug, Serialize, Deserialize, Clone)]
+#[ts(export)]
 pub struct EntityField {
     name: String,
     nullable: bool,
@@ -101,7 +106,8 @@ impl EntityField {
         return &self.nullable;
     }
 }
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(TS, Debug, Serialize, Deserialize, Clone)]
+#[ts(export)]
 pub enum EntityFieldType {
     TEXT {
         min: u32,
@@ -126,12 +132,14 @@ pub enum EntityFieldType {
         entity_names: Vec<String>,
     },
 }
-#[derive(Debug)]
+#[derive(TS, Debug)]
+#[ts(export)]
 pub enum SchemaError {
     INVALID,
     DUPLICATE_ENTITY,
 }
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(TS, Debug, Serialize, Deserialize)]
+#[ts(export)]
 pub struct SchemaSettings {
     data_source: DataSourceType,
 }

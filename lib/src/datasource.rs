@@ -1,11 +1,12 @@
 use rusqlite::Error;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::{
     migrator::SchemaChange,
     schema::{Entity, Schema},
 };
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(TS, Debug, Deserialize, Serialize)]
 pub enum DataSourceType {
     SQLITE { connection_string: String },
     PSQL { connection_string: String },

@@ -1,4 +1,5 @@
-import axios from "axios";
+import type { Schema } from "@/classes/Schema";
+import axios, { type AxiosResponse } from "axios";
 import cookies from "browser-cookies";
 
 interface ILoginTokenDto {
@@ -8,11 +9,11 @@ interface ILoginTokenDto {
 const adminTokenCookie = "admin_token";
 const api = {
   get url() {
-    return Boolean(import.meta.env.PROD) ?
-      "/admin/" :
-      "http://localhost:3000/admin/";
+    return Boolean(import.meta.env.PROD)
+      ? "/admin/"
+      : "http://localhost:3000/admin/";
   },
-  logout(){
+  logout() {
     cookies.erase(adminTokenCookie);
   },
   async login(identifier: string, password: string): Promise<boolean> {
@@ -32,6 +33,9 @@ const api = {
   },
   isLoggedIn(): boolean {
     return Boolean(cookies.get(adminTokenCookie));
+  },
+  async getSchema(): Promise<AxiosResponse<Schema>> {
+    return axios.get<Schema>(this.url + "schema");
   },
 };
 
