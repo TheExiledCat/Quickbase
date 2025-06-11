@@ -5,6 +5,7 @@ use ts_rs::TS;
 use crate::{
     migrator::SchemaChange,
     schema::{Entity, Schema},
+    schema_records::EntityRecord,
 };
 #[derive(TS, Debug, Deserialize, Serialize)]
 pub enum DataSourceType {
@@ -39,4 +40,11 @@ pub trait DataSource {
     // get
     fn load_schema(&self) -> Schema;
     fn update_schema(&self, schema: &Schema) -> DataResult;
+
+    // table operations
+    fn insert_entity(
+        &self,
+        entity: &Entity,
+        record: crate::schema_records::EntityRecord,
+    ) -> DataResult;
 }

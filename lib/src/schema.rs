@@ -1,8 +1,18 @@
-use crate::{datasource::DataSourceType, migrator::SchemaChange, version::QBASEVERSION};
+use crate::{
+    datasource::{DataSource, DataSourceType},
+    datasources::sqlite::SqliteDataSource,
+    migrator::SchemaChange,
+    schema_records::EntityFieldRecord,
+    version::QBASEVERSION,
+};
 use chrono::{DateTime, Utc};
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, fs::File, io::Write};
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+    io::Write,
+};
 use ts_rs::TS;
 use uuid::Uuid;
 // use semver::Version;
@@ -34,6 +44,7 @@ impl EntityType {
                 validate: String::from("^[a-z0-9]+$"),
                 generate: String::from("[a-z0-9]{15}"),
             },
+            None,
         ));
         fields.push(EntityField::new(
             "created",
@@ -44,6 +55,7 @@ impl EntityType {
                 min_date: DateTime::<Utc>::MIN_UTC,
                 max_date: DateTime::<Utc>::MAX_UTC,
             },
+            None,
         ));
         fields.push(EntityField::new(
             "updated",
@@ -54,6 +66,7 @@ impl EntityType {
                 min_date: DateTime::<Utc>::MIN_UTC,
                 max_date: DateTime::<Utc>::MAX_UTC,
             },
+            None,
         ));
         match self {
             EntityType::AUTH => {}
@@ -69,7 +82,7 @@ pub struct Entity {
     pub uuid: String,
     pub name: String,
     pub kind: EntityType,
-    fields: Vec<EntityField>,
+    fields: HashMap<String, EntityField>,
 }
 #[derive(TS, Debug, Serialize, Deserialize, Clone)]
 #[ts(export)]
@@ -79,6 +92,7 @@ pub struct EntityField {
     base: bool,
     primary_key: bool,
     kind: EntityFieldType,
+    default_value: Option<EntityFieldRecord>,
 }
 impl EntityField {
     pub fn new(
@@ -87,6 +101,7 @@ impl EntityField {
         base: bool,
         primary_key: bool,
         kind: EntityFieldType,
+        default_value: Option<EntityFieldRecord>,
     ) -> Self {
         return EntityField {
             name: String::from(name),
@@ -94,6 +109,7 @@ impl EntityField {
             base,
             primary_key,
             kind,
+            default_value,
         };
     }
     pub fn get_name(&self) -> &String {
@@ -117,7 +133,7 @@ pub enum EntityFieldType {
     },
     NUMBER {
         min: f32,
-        max: u32,
+        max: f32,
         is_int: bool,
     },
     BOOL,
@@ -137,6 +153,7 @@ pub enum EntityFieldType {
 pub enum SchemaError {
     INVALID,
     DUPLICATE_ENTITY,
+    DUPLICATE_FIELD,
 }
 #[derive(TS, Debug, Serialize, Deserialize)]
 #[ts(export)]
@@ -219,26 +236,39 @@ impl Entity {
         let mut entity = Entity {
             name: String::from(name),
             kind,
-            fields: vec![],
+            fields: HashMap::new(),
             uuid: Uuid::new_v4().simple().to_string(),
         };
-        entity.add_fields(&mut entity.kind.generate_base_fields());
+        entity.add_fields(entity.kind.generate_base_fields());
         return entity;
     }
-    pub fn get_fields(&self) -> &[EntityField] {
-        return &self.fields;
+    pub fn get_fields(&self) -> Vec<EntityField> {
+        return self.fields.values().cloned().collect();
     }
     pub fn get_uuid(&self) -> &str {
         return &self.uuid;
     }
 
-    pub fn add_field(&mut self, field: EntityField) {
+    pub fn add_field(&mut self, field: EntityField) -> Result<(), SchemaError> {
         //TODO CHECK IF FIELD DOESNT EXIST
-        self.fields.push(field);
+        if let Some(_) = self.get_field_by_name(&field.name) {
+            return Err(SchemaError::DUPLICATE_FIELD);
+        }
+
+        self.fields.insert(field.name.clone(), field);
+        return Ok(());
     }
-    pub fn add_fields(&mut self, fields: &mut Vec<EntityField>) {
+    pub fn add_fields(&mut self, fields: Vec<EntityField>) -> Result<(), SchemaError> {
         //TODO CHECK IF FIELD DOESNT EXIST
-        self.fields.append(fields);
+        for field in fields {
+            if let Err(err) = self.add_field(field) {
+                return Err(err);
+            }
+        }
+        return Ok(());
+    }
+    pub fn get_field_by_name(&self, name: &str) -> Option<&EntityField> {
+        return self.fields.get(name);
     }
 }
 
@@ -250,7 +280,15 @@ impl SchemaSettings {
             },
         };
     }
-
+    pub fn get_source(&self) -> Box<dyn DataSource> {
+        match &self.data_source {
+            DataSourceType::SQLITE { connection_string } => {
+                return Box::new(SqliteDataSource::new(String::from(connection_string)));
+            }
+            DataSourceType::PSQL { connection_string } => todo!(),
+            DataSourceType::MARIA_DB { connection_string } => todo!(),
+        }
+    }
     pub fn get_source_type(&self) -> &DataSourceType {
         return &self.data_source;
     }

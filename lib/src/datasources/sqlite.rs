@@ -105,7 +105,9 @@ impl DataSource for SqliteDataSource {
                 EntityFieldType::RELATION_MANY { entity_names } => todo!(),
             });
 
-            if !field.is_nullable() {
+            if (field.get_name() == "id") {
+                query.push_str("PRIMARY KEY");
+            } else if !field.is_nullable() {
                 query.push_str("NOT NULL");
             }
 
@@ -197,6 +199,32 @@ WHERE (username = ?1 OR email = ?1)
         self.conn
             .execute(query, [json!(schema).to_string()])
             .unwrap();
+        return Ok(());
+    }
+
+    fn insert_entity(
+        &self,
+        entity: &Entity,
+        record: crate::schema_records::EntityRecord,
+    ) -> DataResult {
+        let mut query: String = format!(
+            "INSERT INTO {}({}) VALUES({})",
+            &entity.name,
+            entity
+                .get_fields()
+                .iter()
+                .map(|f| f.get_name().to_owned())
+                .collect::<Vec<String>>()
+                .join(", "),
+            entity
+                .get_fields()
+                .iter()
+                .map(|f| format!(":{}", f.get_name()))
+                .collect::<Vec<String>>()
+                .join(", ")
+        );
+
+        println!("{}", query);
         return Ok(());
     }
 }
