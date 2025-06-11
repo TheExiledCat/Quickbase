@@ -200,7 +200,8 @@ messages.addMessage("Quickbase")
   width: 100%;
 }
 
-.dashboard-content * {
+.dashboard-content>.p-card-body,
+.dashboard-content>.p-card-body>.p-card-content {
   height: 100%;
 }
 
