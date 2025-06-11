@@ -13,11 +13,12 @@ api.getSchema().then((res) => {
 
 const selectedEntityScheme = ref<Entity>();
 const entityFilter = ref("");
-const rows = Enumerable.range(0, 100).select(i => { return { id: "A", created: "B", updated: "C" } }).toArray();
+const rows = Enumerable.range(0, 100).select(i => { return { id: "A" + i, created: "B", updated: "C" } }).toArray();
 function selectEntity(entity: Entity) {
     if (entity)
         selectedEntityScheme.value = entity;
 }
+const selectedRows = ref([])
 </script>
 <template>
     <div class="dashboard-entities">
@@ -36,8 +37,11 @@ function selectEntity(entity: Entity) {
                 <template #content>
                     <div class="dashboard-entities-table-card">
                         <InputText placeholder="filter" class="dashboard-entities-table-filter"></InputText>
-                        <DataTable :value="rows" class="dashboard-entities-table" show-gridlines stripedRows
-                            sort-field="id" scrollable>
+                        <DataTable v-model:selection="selectedRows" :value="rows" class="dashboard-entities-table"
+                            show-gridlines stripedRows sort-field="id" scrollable selectionMode="multiple">
+
+                            <Column selectionMode="multiple">
+                            </Column>
                             <Column v-for="field in selectedEntityScheme?.fields" :header="field.name"
                                 :field="field.name.toLowerCase()" sortable>
                             </Column>
