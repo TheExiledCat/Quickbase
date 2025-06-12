@@ -21,12 +21,7 @@ pub async fn post(
     Query(params): Query<DatabaseFilterParams>,
     Json(entity_record): Json<EntityRecord>,
 ) -> impl IntoResponse {
-    if let Some(entity) = state
-        .read()
-        .unwrap()
-        .schema
-        .get_entity_by_name(&entity_record.name)
-    {
+    if let Some(entity) = state.read().unwrap().schema.get_entity_by_name(&name) {
         match state
             .read()
             .unwrap()

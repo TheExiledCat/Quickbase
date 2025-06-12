@@ -9,7 +9,8 @@ import { GetFieldOrder } from "@/utils/entityHelper";
 const schema = ref<Schema>();
 api.getSchema().then((res) => {
     schema.value = res.data;
-    selectEntity(schema.value.entities[0]);
+    if (schema.value)
+        selectEntity(schema.value.entities[0]);
 });
 
 const selectedEntityScheme = ref<Entity>();
