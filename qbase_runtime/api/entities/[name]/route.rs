@@ -1,6 +1,6 @@
 use axum::{
     Json,
-    extract::{Query, State},
+    extract::{Path, Query, State},
     response::IntoResponse,
 };
 use hyper::StatusCode;
@@ -15,8 +15,9 @@ pub struct DatabaseFilterParams {
     select: Option<String>,
 }
 
-pub async fn get(
+pub async fn post(
     State(state): State<App>,
+    Path(name): Path<String>,
     Query(params): Query<DatabaseFilterParams>,
     Json(entity_record): Json<EntityRecord>,
 ) -> impl IntoResponse {
@@ -40,6 +41,6 @@ pub async fn get(
             },
         }
     } else {
-        return (StatusCode::NOT_FOUND, "NOT FOUND");
+        return (StatusCode::NOT_FOUND, "ENTITY NOT FOUND");
     }
 }

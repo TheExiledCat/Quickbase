@@ -6,7 +6,7 @@ use std::{
 };
 
 fn main() {
-    let webui_dir = Path::new("webui");
+    let webui_dir = Path::new("frontend/webui");
 
     // 1. Run `npm install`
     let status = Command::new("npm")
@@ -29,7 +29,7 @@ fn main() {
     compress_and_delete(&dist_path).expect("failed to gzip and clean");
 
     // 4. Rebuild trigger
-    println!("cargo:rerun-if-changed=webui/");
+    println!("cargo:rerun-if-changed=frontend/webui/");
 }
 
 fn compress_and_delete(dir: &Path) -> std::io::Result<()> {

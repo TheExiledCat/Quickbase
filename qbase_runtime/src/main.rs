@@ -9,14 +9,14 @@ use axum::{
 };
 use axum_folder_router::folder_router;
 use chrono::{Duration, Utc};
-use jsonwebtoken::{EncodingKey, Header, encode};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use libqbase::{
     datasource::{DataSource, DataSourceType},
     datasources::{migrator_sqlite::SqliteMigrator, sqlite::SqliteDataSource},
     migrator::{Migrator, SchemaComparator},
     schema::{Schema, SchemaError},
 };
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::value::U128Deserializer};
 use tower_http::cors::CorsLayer;
 
 struct AppState {
@@ -24,15 +24,20 @@ struct AppState {
     migrator: Box<dyn Migrator>,
 }
 #[derive(Serialize, Deserialize, Debug)]
+pub enum AuthRoleClaim {
+    AUTH = 0,
+    ADMIN,
+}
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Claims {
     sub: String,
     exp: usize,
 }
 const APP_SECRET: &'static str = "QBASE_SECRET";
-pub fn create_jwt(user_id: &str) -> (String, usize) {
+pub fn create_jwt(user_id: &str, role: AuthRoleClaim) -> (String, usize) {
     let expiration = (Utc::now() + Duration::hours(24)).timestamp() as usize;
     let claims = Claims {
-        sub: user_id.to_owned(),
+        sub: format!("{}.{}", user_id.to_owned(), role as u8),
         exp: expiration,
     };
 
@@ -47,6 +52,32 @@ pub fn create_jwt(user_id: &str) -> (String, usize) {
         expiration,
     );
 }
+fn decode_jwt(token: &str) -> Option<(String, AuthRoleClaim)> {
+    let token_data = decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(APP_SECRET.as_bytes()),
+        &Validation::new(Algorithm::HS256),
+    )
+    .ok()?; // Return None if decoding fails
+
+    // Split sub into user_id and role
+    let parts: Vec<&str> = token_data.claims.sub.split('.').collect();
+    if parts.len() != 2 {
+        return None;
+    }
+
+    let user_id = parts[0].to_string();
+    let role_int: u8 = parts[1].parse().ok()?;
+    let role = match role_int {
+        0 => AuthRoleClaim::AUTH,
+        1 => AuthRoleClaim::ADMIN,
+        _ => {
+            return None;
+        }
+    };
+    return Some((user_id, role));
+}
+
 impl AppState {
     pub fn get_schema(&self) -> &Schema {
         return &self.schema;

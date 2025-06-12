@@ -8,7 +8,7 @@ use libqbase::{datasource::DataSource, datasources::sqlite::SqliteDataSource, ha
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::App;
+use crate::{App, AuthRoleClaim, decode_jwt};
 #[derive(Serialize, Deserialize)]
 pub struct LoginDto {
     pub identifier: String,
@@ -19,6 +19,10 @@ pub struct LoginDto {
 pub struct LoginTokenDto {
     pub token: String,
     pub expiration: usize,
+}
+#[derive(Serialize, Deserialize)]
+pub struct ValidateTokenDto {
+    pub token: String,
 }
 pub enum JsonOrFail {
     Json(Json<Value>),
@@ -53,7 +57,7 @@ pub async fn post(State(state): State<App>, Json(login): Json<LoginDto>) -> impl
     let token;
 
     if let Some(id) = admin_id {
-        let token_data = crate::create_jwt(&id.to_string());
+        let token_data = crate::create_jwt(&id.to_string(), crate::AuthRoleClaim::ADMIN);
         token = LoginTokenDto {
             token: token_data.0,
             expiration: token_data.1,
