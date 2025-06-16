@@ -10,6 +10,7 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
+    env,
     fs::File,
     io::Write,
 };
@@ -274,9 +275,12 @@ impl Entity {
 
 impl SchemaSettings {
     pub fn default() -> Self {
+        let exe_path = env::current_exe().unwrap();
+        let mut db_path = exe_path.parent().unwrap().to_path_buf();
+        db_path.push("data.sqlite");
         return SchemaSettings {
             data_source: DataSourceType::SQLITE {
-                connection_string: "data.sqlite".into(),
+                connection_string: db_path.to_str().unwrap().to_owned(),
             },
         };
     }
