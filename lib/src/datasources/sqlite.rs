@@ -2,13 +2,15 @@ use std::fs;
 
 use inquire::{Password, Text};
 use rusqlite::fallible_iterator::Unwrap;
-use rusqlite::{self, Connection, Result};
+use rusqlite::types::{ToSqlOutput, Value};
+use rusqlite::{self, Connection, Result, ToSql, params_from_iter};
 use serde_json::json;
 
 use crate::datasource::{DataResult, DataSource, DataSourceError};
 use crate::hashing;
 use crate::migrator::SchemaChange;
 use crate::schema::{Entity, EntityFieldType, Schema};
+use crate::schema_records::{EntityFieldRecord, EntityRecord};
 pub struct SqliteDataSource {
     source: String,
     conn: Connection,
@@ -207,6 +209,11 @@ WHERE (username = ?1 OR email = ?1)
         entity: &Entity,
         record: crate::schema_records::EntityRecord,
     ) -> DataResult {
+        let keys = entity
+            .get_fields()
+            .iter()
+            .map(|f| format!(":{}", f.get_name()))
+            .collect::<Vec<String>>();
         let mut query: String = format!(
             "INSERT INTO {}({}) VALUES({})",
             &entity.name,
@@ -216,15 +223,50 @@ WHERE (username = ?1 OR email = ?1)
                 .map(|f| f.get_name().to_owned())
                 .collect::<Vec<String>>()
                 .join(", "),
-            entity
-                .get_fields()
-                .iter()
-                .map(|f| format!(":{}", f.get_name()))
-                .collect::<Vec<String>>()
-                .join(", ")
+            keys.join(", ")
         );
 
+        let params: Vec<(&str, Option<&dyn ToSql>)> = record
+            .fields
+            .iter()
+            .map(|(k, v)| {
+                (
+                    keys.iter()
+                        .find(|key| *key.to_owned() == format!(":{}", k))
+                        .unwrap() as &str,
+                    match v {
+                        Some(f) => Some(f as &dyn ToSql),
+                        None => None,
+                    },
+                )
+            })
+            .collect();
+        let mut stmt = self.conn.prepare(&query).unwrap();
         println!("{}", query);
+        stmt.execute(params.as_slice()).unwrap();
+
         return Ok(());
+    }
+}
+impl ToSql for EntityFieldRecord {
+    fn to_sql(&self) -> Result<ToSqlOutput<'_>> {
+        match self {
+            EntityFieldRecord::TEXT(t) => t.to_sql(),
+            EntityFieldRecord::NUMBER(n) => n.to_sql(),
+            EntityFieldRecord::BOOL(b) => b.to_sql(),
+            EntityFieldRecord::DATE(date_time) => {
+                // Extract the timestamp as an i64 and call to_sql on that owned value
+                let ts = date_time.timestamp();
+                Ok(ToSqlOutput::Owned(Value::Integer(ts)))
+            }
+            EntityFieldRecord::ENTITY_REF(_entity_record) => {
+                // Implement as needed
+                todo!()
+            }
+            EntityFieldRecord::ENTITY_REF_MANY(_entity_records) => {
+                // Implement as needed
+                todo!()
+            }
+        }
     }
 }

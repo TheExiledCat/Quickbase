@@ -7,7 +7,6 @@ use ts_rs::TS;
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct EntityRecord {
-    pub name: String,
     pub fields: HashMap<String, Option<EntityFieldRecord>>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
