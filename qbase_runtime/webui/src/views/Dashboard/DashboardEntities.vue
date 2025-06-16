@@ -70,6 +70,12 @@ const selectedRows = ref([])
     height: 100%;
 }
 
+.dashboard-entities-list {
+    border: 1px solid var(--p-primary-color) !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+
 .dashboard-entities-list,
 .dashboard-entities-list * {
     width: 100%;
@@ -101,12 +107,15 @@ const selectedRows = ref([])
     width: 100%;
     height: 100%;
     background: var(--p-surface-700) !important;
-    padding: 0 !important;
+    border-radius: 0 !important;
+}
+
+.dashboard-entities-table-container>.p-card-body {
+    padding: 0;
 }
 
 .dashboard-entities-table {
     width: 100%;
-    border-radius: var(--p-card-border-radius);
     height: 100%;
     overflow: hidden;
 }
