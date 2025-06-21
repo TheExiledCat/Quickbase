@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { Card, Button, DataTable, Column, Listbox, InputText } from "primevue";
+import {
+  Card,
+  Button,
+  DataTable,
+  Column,
+  Listbox,
+  InputText,
+  Drawer,
+} from "primevue";
 import Enumerable from "linq";
 import { ref } from "vue";
 import api from "@/utils/adminUtils";
@@ -8,140 +16,175 @@ import type { Entity } from "@/classes/Entity";
 import { GetFieldOrder } from "@/utils/entityHelper";
 const schema = ref<Schema>();
 api.getSchema().then((res) => {
-    schema.value = res.data;
-    if (schema.value)
-        selectEntity(schema.value.entities[0]);
+  schema.value = res.data;
+  if (schema.value) selectEntity(schema.value.entities[0]);
 });
 
 const selectedEntityScheme = ref<Entity>();
 const entityFilter = ref("");
-const rows = Enumerable.range(0, 100).select(i => { return { id: "A" + i, created: "B", updated: "C" } }).toArray();
+const rows = Enumerable.range(0, 100)
+  .select((i) => {
+    return { id: "A" + i, created: "B", updated: "C" };
+  })
+  .toArray();
 function selectEntity(entity: Entity) {
-    if (entity) {
-        console.log(entity)
-        selectedEntityScheme.value = entity;
-    }
+  if (entity) {
+    console.log(entity);
+    selectedEntityScheme.value = entity;
+  }
 }
-const selectedRows = ref([])
+const selectedRows = ref([]);
 </script>
 <template>
-    <div class="dashboard-entities">
-        <Listbox class="dashboard-entities-list" v-model:model-value="selectedEntityScheme" :options="schema?.entities"
-            @change="(e) => selectEntity(e.value)">
-            <template #header>
-                <h3>Entities</h3>
+  <div class="dashboard-entities">
+    <Drawer class="dashboard-entities-editor-drawer"> </Drawer>
+    <Listbox
+      class="dashboard-entities-list"
+      v-model:model-value="selectedEntityScheme"
+      :options="schema?.entities"
+      @change="(e) => selectEntity(e.value)"
+    >
+      <template #header>
+        <h3>Entities</h3>
 
-                <InputText v-model="entityFilter"></InputText>
-            </template>
-            <template #option="{ option }">
-                {{ option.name }}
-            </template>
-        </Listbox>
-        <Transition name="fade">
-            <Card class="dashboard-entities-table-container" v-if="selectedEntityScheme">
-                <template #content>
-                    <div class="dashboard-entities-table-card">
-                        <InputText placeholder="filter" class="dashboard-entities-table-filter"></InputText>
-                        <DataTable v-model:selection="selectedRows" :value="rows" class="dashboard-entities-table"
-                            show-gridlines stripedRows sort-field="id" scrollable selectionMode="multiple">
-
-                            <Column selectionMode="multiple">
-                            </Column>
-                            <Column
-                                v-for="field in Enumerable.from(Object.values(selectedEntityScheme?.fields)).orderBy(f => GetFieldOrder(f?.name ?? ''))"
-                                :header="field?.name" :field="field?.name.toLowerCase()" sortable>
-                            </Column>
-                        </DataTable>
-                    </div>
-
-                </template>
-            </Card>
-        </Transition>
-
-    </div>
+        <InputText v-model="entityFilter"></InputText>
+      </template>
+      <template #option="{ option }">
+        {{ option.name }}
+      </template>
+      <template #footer>
+        <Button
+          icon="pi pi-plus"
+          class="dashboard-entities-list-add-button"
+        ></Button>
+      </template>
+    </Listbox>
+    <Transition name="fade">
+      <Card
+        class="dashboard-entities-table-container"
+        v-if="selectedEntityScheme"
+      >
+        <template #content>
+          <div class="dashboard-entities-table-card">
+            <InputText
+              placeholder="filter"
+              class="dashboard-entities-table-filter"
+            ></InputText>
+            <DataTable
+              v-model:selection="selectedRows"
+              :value="rows"
+              class="dashboard-entities-table"
+              show-gridlines
+              stripedRows
+              sort-field="id"
+              scrollable
+              selectionMode="multiple"
+            >
+              <Column selectionMode="multiple"> </Column>
+              <Column
+                v-for="field in Enumerable.from(
+                  Object.values(selectedEntityScheme?.fields)
+                ).orderBy((f) => GetFieldOrder(f?.name ?? ''))"
+                :header="field?.name"
+                :field="field?.name.toLowerCase()"
+                sortable
+              >
+              </Column>
+            </DataTable>
+          </div>
+        </template>
+      </Card>
+    </Transition>
+  </div>
 </template>
 <style>
 .dashboard-entities {
-    display: flex;
-    flex-direction: row;
-    gap: var(--column-gap);
-    justify-content: flex-start;
-    width: 100%;
-    height: 100%;
+  display: flex;
+  flex-direction: row;
+  gap: var(--column-gap);
+  justify-content: flex-start;
+  width: 100%;
+  height: 100%;
 }
 
 .dashboard-entities-list {
-    border: 1px solid var(--p-primary-color) !important;
-    border-top-right-radius: 0 !important;
-    border-bottom-right-radius: 0 !important;
+  border: 1px solid var(--p-primary-color) !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
 }
 
 .dashboard-entities-list,
 .dashboard-entities-list * {
-    width: 100%;
-    text-align: center !important;
-    display: flex;
-    align-items: center;
-    flex-direction: column;
+  width: 100%;
+  text-align: center !important;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
 }
 
 .dashboard-entities-list * {
-    max-height: fit-content !important;
+  max-height: fit-content !important;
 }
 
 .dashboard-entities-list {
-    width: 15%;
-    height: 100%;
+  width: 15%;
+  height: 100%;
 }
 
 .dashboard-entities-list .p-listbox-list {
-    height: auto;
+  height: auto;
 }
 
 .dashboard-entities-list .p-listbox-option {
-    height: fit-content;
+  height: fit-content;
 }
 
 .dashboard-entities-table-container {
-    display: flex;
-    width: 100%;
-    height: 100%;
-    background: var(--p-surface-700) !important;
-    border-radius: 0 !important;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  background: var(--p-surface-700) !important;
+  border-radius: 0 !important;
 }
 
-.dashboard-entities-table-container>.p-card-body {
-    padding: 0;
+.dashboard-entities-table-container > .p-card-body {
+  padding: 0;
 }
 
 .dashboard-entities-table {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
-
 
 .dashboard-entities-table-container .p-card-body,
 .dashboard-entities-table .p-datatable-table-container,
 .dashboard-entities-table-container .p-card-content {
-    height: 100%;
+  height: 100%;
 }
 
 .p-datatable-thead,
 .p-datatable-thead * {
-    height: auto;
+  height: auto;
 }
 
 .dashboard-entities-table-card {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
 }
 
-
 .dashboard-entities-table-filter {
-    margin-block-end: .5rem;
+  margin-block-end: 0.5rem;
+}
+.dashboard-entities-list-add-button.p-button-icon-only {
+  width: 100%;
+  text-align: center;
+  font-size: small;
+}
+.dashboard-entities-list-add-button.p-button-icon-only > *:last-child {
+  display: none;
 }
 </style>

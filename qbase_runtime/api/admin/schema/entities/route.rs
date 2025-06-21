@@ -8,11 +8,13 @@ use libqbase::{
     migrator::SchemaChange,
     schema::{Entity, EntityFieldType, EntityType},
 };
+use ts_rs::TS;
 
 use crate::App;
 use serde::{Deserialize, Serialize};
-use serde_json;
-#[derive(Serialize, Deserialize)]
+use serde_json::{self, json};
+#[derive(Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct EntityCreationDTO {
     pub kind: EntityType,
     pub name: String,
@@ -22,6 +24,7 @@ pub async fn post(
     Json(entity): Json<EntityCreationDTO>,
 ) -> impl IntoResponse {
     let new_entity = Entity::new(&entity.name, entity.kind);
+    let copy = new_entity.clone();
     let new_change: SchemaChange;
     {
         match state.write().unwrap().schema.add_entity(new_entity) {
@@ -29,7 +32,7 @@ pub async fn post(
             Err(e) => {
                 return (
                     StatusCode::CONFLICT,
-                    Html("<h1>Entity Creation Failed</h1>".to_owned()),
+                    Err(Json("<h1>Entity Creation Failed</h1>".to_owned())),
                 );
             }
         }
@@ -39,11 +42,5 @@ pub async fn post(
         .unwrap()
         .migrator
         .migrate(vec![new_change], &state.read().unwrap().schema);
-    return (
-        StatusCode::OK,
-        Html(String::from(format!(
-            "<h1>Entity Created: {}</h1>",
-            &entity.name
-        ))),
-    );
+    return (StatusCode::OK, Ok(Json(copy)));
 }
